@@ -16,6 +16,21 @@
   --green-dark: #128c7e;
   --font-display: "Syne", sans-serif;
   --font-body: "Inter", sans-serif;
+
+  --status-pending: #c4c4c4;
+  --status-sent: #a25ddc;
+  --status-in_progress: #fdab3d;
+  --status-awaiting_photo: #579bfc;
+  --status-done: #00c875;
+  --status-issue: #e2445c;
+}
+
+/* The marketing site keeps the bold editorial Syne look; the admin app gets
+   a calmer, professional display font better suited to a data-dense tool. */
+.dashboard,
+.login-screen,
+.auth-status {
+  --font-display: "Plus Jakarta Sans", "Inter", sans-serif;
 }
 
 ::selection {
@@ -268,6 +283,15 @@ section {
   letter-spacing: -0.03em;
   line-height: 0.95;
   text-transform: uppercase;
+}
+
+/* Calmer heading treatment for the admin app — sentence case reads better
+   for a tool people scan all day than the marketing site's blocky uppercase. */
+.dashboard .sec-title,
+.login-screen .sec-title {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-weight: 700;
 }
 
 .sec-sub {
@@ -612,6 +636,535 @@ footer {
 footer p {
   font-size: 0.75rem;
   color: var(--ink-light);
+}
+
+/* ─── AUTH / LOGIN ─── */
+.auth-status {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 0 5%;
+}
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5%;
+}
+
+.login-card {
+  text-align: center;
+  max-width: 360px;
+}
+
+.login-sub {
+  font-size: 0.9rem;
+  color: var(--ink-mid);
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.login-error {
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: #c0392b;
+}
+
+/* ─── DASHBOARD ─── */
+.dashboard {
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 5%;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-header-left {
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+
+.dashboard-nav {
+  display: flex;
+  gap: 24px;
+}
+
+.dashboard-nav-link {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink-light);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.dashboard-nav-link:hover {
+  color: var(--ink);
+}
+.dashboard-nav-link.is-active {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.dashboard-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-user {
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+}
+
+.dashboard-body {
+  padding: 40px 5%;
+}
+
+.dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.dashboard-upload {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-message {
+  font-size: 0.85rem;
+  color: var(--ink-mid);
+  margin-bottom: 16px;
+}
+.import-message.is-error {
+  color: #c0392b;
+}
+
+.worker-add-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.worker-add-form .field {
+  flex: 1 1 180px;
+}
+
+.field-inline {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  width: 100%;
+}
+
+.worker-row-actions {
+  display: flex;
+  gap: 8px;
+}
+.worker-row-actions .nav-contact {
+  padding: 6px 14px;
+  font-size: 0.75rem;
+}
+
+.table-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 9px 16px;
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+.search-box svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-light);
+  flex-shrink: 0;
+}
+.search-box input {
+  border: none;
+  outline: none;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
+  width: 100%;
+  background: transparent;
+  color: var(--ink);
+}
+.search-box input::placeholder {
+  color: var(--ink-light);
+}
+
+.filter-select {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 9px 14px;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  background: #fff;
+  color: var(--ink-mid);
+  cursor: pointer;
+}
+
+.results-count {
+  font-size: 0.78rem;
+  color: var(--ink-light);
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.table-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(14, 14, 14, 0.04), 0 1px 6px rgba(14, 14, 14, 0.06);
+  overflow: hidden;
+}
+
+.shipments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.shipments-table th,
+.shipments-table td {
+  text-align: left;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shipments-table th {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  background: #f7f5f0;
+}
+
+.shipments-table tbody tr:nth-child(even) {
+  background: #fafaf7;
+}
+.shipments-table tbody tr:hover {
+  background: #f0eee7;
+}
+.shipments-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.shipments-empty {
+  text-align: center;
+  color: var(--ink-light);
+  padding: 40px 0;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 2px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.status-pending,
+.status-processing {
+  background: var(--status-pending);
+  color: #fff;
+}
+.status-sent {
+  background: var(--status-sent);
+  color: #fff;
+}
+.status-in_progress {
+  background: var(--status-in_progress);
+  color: #fff;
+}
+.status-awaiting_photo {
+  background: var(--status-awaiting_photo);
+  color: #fff;
+}
+.status-done {
+  background: var(--status-done);
+  color: #fff;
+}
+.status-issue,
+.status-error {
+  background: var(--status-issue);
+  color: #fff;
+}
+
+/* Solid full-cell status block (monday.com style), used in detail/expanded
+   rows and for the Workers active/inactive column. */
+.status-block {
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 8px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #fff;
+}
+.status-block-pending {
+  background: var(--status-pending);
+}
+.status-block-sent {
+  background: var(--status-sent);
+}
+.status-block-in_progress {
+  background: var(--status-in_progress);
+}
+.status-block-awaiting_photo {
+  background: var(--status-awaiting_photo);
+}
+.status-block-done {
+  background: var(--status-done);
+}
+.status-block-issue {
+  background: var(--status-issue);
+}
+
+/* ─── AVATARS + GROUP HEADERS (monday.com style) ─── */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.group-header-row td {
+  padding: 14px 16px 8px;
+  border-bottom: none;
+  background: #fff;
+}
+.group-header-row:first-child td {
+  padding-top: 16px;
+}
+.group-header-label {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ─── MONDAY-STYLE DELIVERIES TABLE ─── */
+.filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 7px 14px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #fff;
+  color: var(--ink-mid);
+  cursor: pointer;
+}
+.filter-pill.is-active {
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.th-with-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.th-with-filter select {
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink-mid);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.monday-table .expand-col {
+  width: 28px;
+}
+
+.expand-cell {
+  text-align: center;
+}
+.chevron {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: var(--ink-light);
+  transition: transform 0.15s;
+}
+.chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.group-row {
+  cursor: pointer;
+}
+
+.branch-cell {
+  font-weight: 700;
+}
+
+.worker-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.worker-cell .worker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.worker-cell .worker-name {
+  font-weight: 600;
+}
+.worker-cell .worker-phone {
+  font-size: 0.75rem;
+  color: var(--ink-light);
+}
+
+.status-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  border-radius: 14px;
+  padding: 5px 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  opacity: 0.92;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.status-chip:hover {
+  opacity: 1;
+}
+.status-chip.is-active {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
+}
+.chip-pending {
+  background: var(--status-pending);
+}
+.chip-sent {
+  background: var(--status-sent);
+}
+.chip-in_progress {
+  background: var(--status-in_progress);
+}
+.chip-awaiting_photo {
+  background: var(--status-awaiting_photo);
+}
+.chip-done {
+  background: var(--status-done);
+}
+.chip-issue {
+  background: var(--status-issue);
+}
+
+.detail-row td {
+  padding: 0 16px 16px 44px;
+  background: #fafaf7;
+}
+
+.detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.detail-table th,
+.detail-table td {
+  text-align: left;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.detail-table th {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  background: #f0eee7;
+}
+.detail-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.imports-log {
+  margin-top: 48px;
+}
+
+.confirmation-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  display: block;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+.confirmation-thumb:hover {
+  transform: scale(1.08);
+}
+
+.imports-log-title {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  margin-bottom: 16px;
 }
 
 /* ─── RESPONSIVE ─── */

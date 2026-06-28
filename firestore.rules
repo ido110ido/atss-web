@@ -1,0 +1,62 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.token.email)).data;
+    }
+
+    function isActiveUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.token.email))
+        && profile().active == true;
+    }
+
+    function sameCompany(data) {
+      return isActiveUser() && profile().company == data.company;
+    }
+
+    // User profiles are provisioned manually by the admin via the Firebase
+    // console — the app only ever reads its own profile.
+    match /users/{email} {
+      allow read: if request.auth != null && request.auth.token.email == email;
+      allow write: if false;
+    }
+
+    // deliveries/imports are only ever written by the Cloud Functions
+    // backend (firebase-admin bypasses these rules entirely) — the web
+    // dashboard is read-only for these.
+    match /deliveries/{deliveryId} {
+      allow read: if sameCompany(resource.data);
+      allow write: if false;
+    }
+
+    // Workers can also be added/edited directly from the dashboard, in
+    // addition to the batch Excel import (Cloud Function, admin SDK). The
+    // doc ID is `${company}_${phone}` at creation time, but the doc ID itself
+    // is immutable in Firestore regardless — editing `phone` afterwards just
+    // updates the field, it can't and doesn't change the ID. Existing
+    // delivery docs reference workers by ID (frozen at creation), so they're
+    // unaffected either way. Company may never change, even on update.
+    match /workers/{workerId} {
+      allow read: if sameCompany(resource.data);
+      allow create: if isActiveUser()
+        && request.resource.data.company == profile().company
+        && workerId == request.resource.data.company + "_" + request.resource.data.phone;
+      allow update: if sameCompany(resource.data)
+        && request.resource.data.company == resource.data.company;
+      allow delete: if false;
+    }
+
+    match /imports/{importId} {
+      allow read: if sameCompany(resource.data);
+      allow write: if false;
+    }
+
+    match /workerImports/{importId} {
+      allow read: if sameCompany(resource.data);
+      allow write: if false;
+    }
+  }
+}

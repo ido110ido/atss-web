@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyCEULc8YpA2wColDcBZC-Pip7iYj2tVII8",
   authDomain: "logistic-track-golf.firebaseapp.com",
   projectId: "logistic-track-golf",

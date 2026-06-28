@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // The dashboard uploads the raw Excel file here; the Cloud Function
+    // (firebase-admin, bypasses these rules) reads it and parses it server
+    // side. The client never needs to read it back.
+    match /imports/{company}/{fileName} {
+      allow write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.token.email)).data.active == true
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.token.email)).data.company == company;
+      allow read: if false;
+    }
+
+    // Same pattern for the workers batch-import Excel file.
+    match /workers/{company}/{fileName} {
+      allow write: if request.auth != null
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.token.email)).data.active == true
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.token.email)).data.company == company;
+      allow read: if false;
+    }
+
+    // Unloading confirmation photos, written by the whatsappWebhook Cloud
+    // Function (admin SDK, bypasses these rules). The path has no company
+    // segment, so scope read access by looking up the referenced delivery's
+    // company instead and comparing it to the requesting user's own.
+    match /photos/{deliveryId}/{fileName} {
+      allow read: if request.auth != null
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.token.email)).data.active == true
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.token.email)).data.company
+          == firestore.get(/databases/(default)/documents/deliveries/$(deliveryId)).data.company;
+      allow write: if false;
+    }
+  }
+}
