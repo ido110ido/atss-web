@@ -1,15 +1,9 @@
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { db, storage } from "../lib/firebase.js";
-import { COLLECTIONS, DeliveryDoc, WorkerDoc } from "../config/constants.js";
-import {
-  WHATSAPP_TOKEN,
-  WHATSAPP_PHONE_NUMBER_ID,
-  WHATSAPP_VERIFY_TOKEN,
-  sendText,
-  sendInteractiveButtons,
-  downloadMedia,
-} from "../lib/whatsapp.js";
+import { COLLECTIONS, DeliveryDoc, DeliveryStatus, WorkerDoc } from "../config/constants.js";
+import { WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_VERIFY_TOKEN, sendText, downloadMedia } from "../lib/whatsapp.js";
+import { applyDeliveryStatusTransition } from "../lib/deliveryActions.js";
 
 export const whatsappWebhook = onRequest(
   {
@@ -196,27 +190,13 @@ async function handleButtonReply(from: string, msg: Record<string, unknown>): Pr
   }
 
   // `status` here is the TARGET status encoded in the button payload (see
-  // morningPush.ts), not the delivery's current status — same convention
-  // for all three buttons below.
-  if (status === "in_progress") {
-    await deliveryRef.update({ status: "in_progress" });
-    await sendText(from, `Unloading started for the delivery at store ${delivery.storeBranch}.`);
-    await sendInteractiveButtons(from, "Tap below once you're done unloading.", [
-      { id: `delivery_id: ${deliveryId},status:awaiting_photo`, title: "Finished unloading" },
-    ]);
-  } else if (status === "awaiting_photo") {
-    await deliveryRef.update({ status: "awaiting_photo" });
-    await db.collection(COLLECTIONS.WORKERS).doc(delivery.workerId).update({
-      pendingPhotoDeliveryId: deliveryId,
-    });
-    await sendText(from, "Please send a photo of the unloaded goods to confirm completion.");
-  } else if (status === "issue") {
-    await deliveryRef.update({ status: "issue" });
-    logger.warn("Delivery issue reported", { from, deliveryId });
-    await sendText(from, "Got it — we've flagged an issue with this delivery.");
-  } else {
+  // morningPush.ts), not the delivery's current status.
+  if (!["in_progress", "awaiting_photo", "issue"].includes(status)) {
     logger.warn("Unknown button status", { from, deliveryId, status });
+    return;
   }
+
+  await applyDeliveryStatusTransition(deliveryId, status as DeliveryStatus);
 }
 
 /**
@@ -263,7 +243,13 @@ async function handlePhoto(from: string, msg: Record<string, unknown>): Promise<
   try {
     const buffer = await downloadMedia(mediaId);
     const photoPath = `photos/${deliveryId}/${mediaId}.jpg`;
-    await storage.bucket().file(photoPath).save(buffer, { contentType: "image/jpeg" });
+    // These photos never change once saved, so cache aggressively — the
+    // dashboard re-displays the same confirmation photo on every visit to
+    // the Completed page.
+    await storage.bucket().file(photoPath).save(buffer, {
+      contentType: "image/jpeg",
+      metadata: { cacheControl: "public, max-age=2592000" }, // 30 days
+    });
 
     await db.collection(COLLECTIONS.DELIVERIES).doc(deliveryId).update({
       status: "done",

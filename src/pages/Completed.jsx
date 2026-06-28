@@ -3,35 +3,65 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage";
 import { useAuth } from "../auth/AuthContext";
 import { db, storage } from "../firebase-admin";
+import { loadPhotoUrlCache, savePhotoUrlCache } from "../lib/photoUrlCache";
 import AdminHeader from "../components/AdminHeader";
+
+function thirtyDaysAgo() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
+}
 
 export default function Completed() {
   const { profile } = useAuth();
   const [deliveries, setDeliveries] = useState([]);
+  const [loadError, setLoadError] = useState("");
   const [search, setSearch] = useState("");
-  const [photoUrls, setPhotoUrls] = useState({});
+  const [photoUrls, setPhotoUrls] = useState(loadPhotoUrlCache);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
 
   useEffect(() => {
     const q = query(
       collection(db, "deliveries"),
       where("company", "==", profile.company),
       where("status", "==", "done"),
+      where("date", ">=", thirtyDaysAgo()),
     );
-    return onSnapshot(q, (snapshot) => {
-      const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-      docs.sort((a, b) => (b.date + b.expectedTime).localeCompare(a.date + a.expectedTime));
-      setDeliveries(docs);
-    });
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        setLoadError("");
+        const docs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        docs.sort((a, b) => (b.date + b.expectedTime).localeCompare(a.date + a.expectedTime));
+        setDeliveries(docs);
+      },
+      (err) => setLoadError(err.message),
+    );
   }, [profile.company]);
 
+  useEffect(() => {
+    if (!lightboxUrl) return;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") setLightboxUrl(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [lightboxUrl]);
+
   // Resolve each delivery's Storage path to an actual downloadable URL once,
-  // skipping ones we've already fetched.
+  // skipping ones already in the cache (persisted across visits/reloads).
   useEffect(() => {
     for (const d of deliveries) {
-      if (d.photoPath && !(d.id in photoUrls)) {
+      if (d.photoPath && !(d.photoPath in photoUrls)) {
         getDownloadURL(ref(storage, d.photoPath))
-          .then((url) => setPhotoUrls((prev) => ({ ...prev, [d.id]: url })))
-          .catch(() => setPhotoUrls((prev) => ({ ...prev, [d.id]: null })));
+          .then((url) => {
+            setPhotoUrls((prev) => {
+              const next = { ...prev, [d.photoPath]: url };
+              savePhotoUrlCache(next);
+              return next;
+            });
+          })
+          .catch(() => setPhotoUrls((prev) => ({ ...prev, [d.photoPath]: null })));
       }
     }
   }, [deliveries, photoUrls]);
@@ -51,10 +81,17 @@ export default function Completed() {
 
       <div className="dashboard-body">
         <div className="dashboard-toolbar">
-          <h1 className="sec-title" style={{ fontSize: "1.6rem" }}>
-            Completed Deliveries
-          </h1>
+          <div>
+            <h1 className="sec-title" style={{ fontSize: "1.6rem" }}>
+              Completed Deliveries
+            </h1>
+            <p className="import-message" style={{ marginTop: 4, marginBottom: 0 }}>
+              Showing the last 30 days.
+            </p>
+          </div>
         </div>
+
+        {loadError && <p className="import-message is-error">Failed to load completed deliveries: {loadError}</p>}
 
         <div className="table-controls">
           <div className="search-box">
@@ -108,11 +145,15 @@ export default function Completed() {
                   <td>
                     {!d.photoPath ? (
                       "—"
-                    ) : photoUrls[d.id] ? (
-                      <a href={photoUrls[d.id]} target="_blank" rel="noreferrer">
-                        <img src={photoUrls[d.id]} alt="Unloading confirmation" className="confirmation-thumb" />
-                      </a>
-                    ) : photoUrls[d.id] === null ? (
+                    ) : photoUrls[d.photoPath] ? (
+                      <img
+                        src={photoUrls[d.photoPath]}
+                        alt="Unloading confirmation"
+                        className="confirmation-thumb"
+                        loading="lazy"
+                        onClick={() => setLightboxUrl(photoUrls[d.photoPath])}
+                      />
+                    ) : photoUrls[d.photoPath] === null ? (
                       "Unavailable"
                     ) : (
                       "Loading…"
@@ -124,6 +165,20 @@ export default function Completed() {
           </table>
         </div>
       </div>
+
+      {lightboxUrl && (
+        <div className="lightbox-overlay" onClick={() => setLightboxUrl(null)}>
+          <button className="lightbox-close" type="button" onClick={() => setLightboxUrl(null)}>
+            ✕
+          </button>
+          <img
+            src={lightboxUrl}
+            alt="Unloading confirmation"
+            className="lightbox-image"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

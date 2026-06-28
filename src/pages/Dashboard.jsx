@@ -4,14 +4,15 @@ import { useAuth } from "../auth/AuthContext";
 import { db } from "../firebase-admin";
 import { uploadDeliveriesFile } from "../lib/imports";
 import { triggerMorningPush } from "../lib/morningPush";
+import { updateDeliveryStatus } from "../lib/deliveryActions";
 import { colorForIndex, colorForKey, initials } from "../lib/colors";
 import AdminHeader from "../components/AdminHeader";
 
 const STATUS_LABEL = {
   pending: "Pending",
   sent: "Sent",
-  in_progress: "On the way",
-  awaiting_photo: "Unloading",
+  in_progress: "Start unloading",
+  awaiting_photo: "Awaiting Photo",
   done: "Done",
   issue: "Issue",
 };
@@ -69,6 +70,8 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [expanded, setExpanded] = useState(new Set());
   const [pushState, setPushState] = useState({ status: "idle", message: "" });
+  const [statusUpdating, setStatusUpdating] = useState({});
+  const [statusError, setStatusError] = useState("");
 
   useEffect(() => {
     // Completed deliveries move to the Completed page instead of cluttering
@@ -148,6 +151,18 @@ export default function Dashboard() {
     }
   }
 
+  async function handleStatusChange(deliveryId, newStatus) {
+    setStatusUpdating((prev) => ({ ...prev, [deliveryId]: true }));
+    setStatusError("");
+    try {
+      await updateDeliveryStatus(deliveryId, newStatus);
+    } catch (err) {
+      setStatusError(err.message);
+    } finally {
+      setStatusUpdating((prev) => ({ ...prev, [deliveryId]: false }));
+    }
+  }
+
   async function handleSendMorningPush() {
     setPushState({ status: "sending", message: "" });
     try {
@@ -209,6 +224,8 @@ export default function Dashboard() {
             {importState.message}
           </p>
         )}
+
+        {statusError && <p className="import-message is-error">Failed to update status: {statusError}</p>}
 
         <div className="table-controls">
           <div className="search-box">
@@ -349,9 +366,17 @@ export default function Dashboard() {
                                   <td>{d.licensePlate || "—"}</td>
                                   <td>{d.boxCount || "—"}</td>
                                   <td className="status-cell-wrap">
-                                    <span className={`status-block status-block-${d.status}`}>
-                                      {STATUS_LABEL[d.status] || d.status}
-                                    </span>
+                                    <select
+                                      className={`status-select status-block-${d.status}`}
+                                      value={d.status}
+                                      disabled={!!statusUpdating[d.id]}
+                                      onChange={(e) => handleStatusChange(d.id, e.target.value)}>
+                                      {STATUS_ORDER.map((s) => (
+                                        <option key={s} value={s}>
+                                          {STATUS_LABEL[s]}
+                                        </option>
+                                      ))}
+                                    </select>
                                   </td>
                                 </tr>
                               ))}
