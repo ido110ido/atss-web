@@ -47,7 +47,7 @@ export interface WorkerDoc {
 
 export interface DeliveryDoc {
   company: string;
-  workerId: string; // `${company}_${phone}`, FK to workers
+  workerId: string; // FK to workers — a stable random doc ID, not derived from phone
   workerName: string;
   workerPhone: string;
   driverName: string;
@@ -79,17 +79,6 @@ export interface WorkerImportDoc {
   workerCount: number;
   status: "processing" | "done" | "error";
   error?: string;
-}
-
-/**
- * Builds the Firestore doc ID for a worker: company-scoped so the same
- * phone number can't collide across two different companies' rosters.
- * @param {string} company company identifier
- * @param {string} phone E.164 phone number
- * @return {string} composite worker doc ID
- */
-export function workerDocId(company: string, phone: string): string {
-  return `${company}_${phone}`;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { ref, uploadBytes } from "firebase/storage";
 import { db, storage } from "../firebase-admin";
 
@@ -10,37 +10,45 @@ function normalizePhone(raw) {
   return "972" + digits;
 }
 
-// Mirrors functions/src/config/constants.ts workerDocId — keep in sync.
-export function workerDocId(company, phone) {
-  return `${company}_${phone}`;
-}
-
+// The worker doc ID is an opaque random ID, not derived from phone — phone
+// is just a regular field, matched by querying rather than by predicting
+// the ID. That means it can change later (see updateWorker) without ever
+// orphaning anything. Mirrors functions/src/handlers/onRouteFileUploaded.ts'
+// onWorkerFileUploaded, which does the same phone-query upsert for the
+// batch Excel import.
 export async function addWorker({ company, name, phone, address, language }) {
   const normalizedPhone = normalizePhone(phone);
-  const id = workerDocId(company, normalizedPhone);
-  await setDoc(
-    doc(db, "workers", id),
-    {
-      company,
-      name: name.trim(),
-      phone: normalizedPhone,
-      address: address.trim(),
-      language: language?.trim() || null,
-      active: true,
-    },
-    { merge: true },
+  const data = {
+    company,
+    name: name.trim(),
+    phone: normalizedPhone,
+    address: address.trim(),
+    language: language?.trim() || null,
+    active: true,
+  };
+
+  const existing = await getDocs(
+    query(collection(db, "workers"), where("company", "==", company), where("phone", "==", normalizedPhone)),
   );
-  return id;
+
+  if (!existing.empty) {
+    const ref = existing.docs[0].ref;
+    await setDoc(ref, data, { merge: true });
+    return ref.id;
+  }
+
+  const newRef = doc(collection(db, "workers"));
+  await setDoc(newRef, data);
+  return newRef.id;
 }
 
-// Note: the worker doc ID is `${company}_${phone}` as of creation time, but
-// Firestore doc IDs can't be renamed — editing phone here only updates the
-// field, the ID keeps its original value. That's fine for everything in this
-// app (lookups are by ID or by the live `phone` field, never by parsing the
-// ID). The one thing to watch: if this worker is still listed under their
-// old phone number in the recurring Excel roster, the next batch import will
-// upsert by that old number and silently revert this edit — update the
-// Excel too when changing a worker's number.
+// Editing phone here just updates the field on this same stable doc ID — a
+// Cloud Function trigger (onWorkerPhoneChanged) automatically propagates the
+// new number to this worker's not-yet-done deliveries. One thing to know:
+// the recurring Excel roster still matches workers by phone, so if this
+// worker is re-imported later under their OLD number (e.g. the Excel wasn't
+// updated too), that creates a new, separate worker record rather than
+// updating this one — keep the Excel in sync when changing a number.
 export async function updateWorker(id, { name, phone, address, language, active }) {
   const data = {};
   if (name !== undefined) data.name = name.trim();

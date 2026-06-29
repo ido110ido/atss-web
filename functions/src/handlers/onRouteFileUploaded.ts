@@ -2,7 +2,7 @@ import { onObjectFinalized, StorageEvent } from "firebase-functions/v2/storage";
 import * as logger from "firebase-functions/logger";
 import { FieldValue } from "firebase-admin/firestore";
 import { db, storage } from "../lib/firebase.js";
-import { COLLECTIONS, normalizePhone, workerDocId } from "../config/constants.js";
+import { COLLECTIONS, normalizePhone, WorkerDoc } from "../config/constants.js";
 import { parseDeliveryExcel, parseWorkerExcel } from "../lib/excelParser.js";
 import { createDeliveriesFromRows } from "../lib/deliveries.js";
 
@@ -101,10 +101,20 @@ const onWorkerFileUploaded = async (filePath: string, event: StorageEvent) => {
     const rows = await parseWorkerExcel(buffer);
     logger.info(`Parsed ${rows.length} workers from ${fileName}`);
 
+    // Match existing workers by phone (the natural "same person" key) so a
+    // re-import updates the same doc instead of creating a duplicate — but
+    // the doc ID itself is a stable random ID, not derived from phone, so
+    // editing phone later (e.g. from the dashboard) never orphans it.
+    const existingSnap = await db.collection(COLLECTIONS.WORKERS).where("company", "==", company).get();
+    const refByPhone = new Map<string, FirebaseFirestore.DocumentReference>();
+    for (const doc of existingSnap.docs) {
+      refByPhone.set((doc.data() as WorkerDoc).phone, doc.ref);
+    }
+
     const batch = db.batch();
     for (const row of rows) {
       const phone = normalizePhone(row.phone);
-      const ref = db.collection(COLLECTIONS.WORKERS).doc(workerDocId(company, phone));
+      const ref = refByPhone.get(phone) ?? db.collection(COLLECTIONS.WORKERS).doc();
       batch.set(
         ref,
         {

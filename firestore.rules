@@ -34,16 +34,13 @@ service cloud.firestore {
 
     // Workers can also be added/edited directly from the dashboard, in
     // addition to the batch Excel import (Cloud Function, admin SDK). The
-    // doc ID is `${company}_${phone}` at creation time, but the doc ID itself
-    // is immutable in Firestore regardless — editing `phone` afterwards just
-    // updates the field, it can't and doesn't change the ID. Existing
-    // delivery docs reference workers by ID (frozen at creation), so they're
-    // unaffected either way. Company may never change, even on update.
+    // doc ID is an opaque random ID, unrelated to phone — the app looks
+    // workers up by querying the `phone` field, never by predicting the ID,
+    // so phone can change freely without orphaning anything. Company may
+    // never change, even on update.
     match /workers/{workerId} {
       allow read: if sameCompany(resource.data);
-      allow create: if isActiveUser()
-        && request.resource.data.company == profile().company
-        && workerId == request.resource.data.company + "_" + request.resource.data.phone;
+      allow create: if isActiveUser() && request.resource.data.company == profile().company;
       allow update: if sameCompany(resource.data)
         && request.resource.data.company == resource.data.company;
       allow delete: if false;
